@@ -1,0 +1,63 @@
+CREATE PROCEDURE [dbo].[CargarXML]
+    @inPathXML NVARCHAR(512) -- Ruta del archivo XML
+AS 
+BEGIN
+	DECLARE @Datos xml/*Declaramos la variable Datos como un tipo XML*/
+	
+	 -- Para cargar el archivo con una variable, CHAR(39) son comillas simples
+	DECLARE @Comando NVARCHAR(512) -- comando que va a ejecutar el sql dinamico
+	='SELECT @Datos = D FROM OPENROWSET (BULK '  + CHAR(32) + @inPathXML + CHAR(32) + ', SINGLE_BLOB) AS Datos(D)' 
+	
+	DECLARE @Parametros NVARCHAR(512)
+
+	DECLARE @IdClaseArticulo VARCHAR(32)
+		
+	DECLARE @hdoc int /*Creamos hdoc que va a ser un identificador*/
+
+	SET @Parametros = N'@Datos xml OUTPUT' --parametros del sql dinamico
+
+	EXECUTE sp_executesql @Comando, @Parametros, @Datos OUTPUT -- ejecutamos el comando que hicimos dinamicamente
+	    
+	EXEC sp_xml_preparedocument @hdoc OUTPUT, @Datos/*Toma el identificador y a la variable con el documento y las asocia*/
+	
+	
+	INSERT INTO dbo.ClaseArticulo (Nombre)
+	SELECT A.Nombre
+	FROM OPENXML (@hdoc, '/root/ClasesdeArticulos', 1)
+	WITH (
+	    Nombre VARCHAR(32)
+	) AS A
+
+	INSERT INTO dbo.Articulo 
+					([Nombre]
+				   ,[IdClaseArticulo]
+				   ,[Precio])/*Inserta en la tabla Puestos*/
+	SELECT A.Nombre
+	, CASE 
+           WHEN EXISTS (SELECT 1 FROM dbo.ClaseArticulo S WHERE S.Nombre = A.ClasesdeArticulo)
+               THEN (SELECT S.Id FROM dbo.ClaseArticulo S WHERE S.Nombre = A.ClasesdeArticulo)
+           ELSE 0 -- Valor por defecto en caso de que no se encuentre una coincidencia
+       END AS IdClaseArticulo
+	,A.precio
+	FROM OPENXML (@hdoc, '/root/Articulos' , 1)/*Lee los contenidos del XML y 
+	para eso necesita un identificador,el PATH del nodo y el 1 que sirve para retornar solo atributos*/
+	WITH(/*Dentro del WITH se pone el nombre y el tipo de los atributos a retornar*/
+		Nombre VARCHAR(64),
+	    ClasesdeArticulo VARCHAR(64),
+		precio money
+	    )AS A
+
+	INSERT INTO [dbo].[Usuario]
+	           ([pin]
+	           ,[UserName])/*Inserta en la tabla Departamentos*/
+	SELECT A.Nombre
+		  ,A.[Password]
+	FROM OPENXML (@hdoc, '/root/Usuarios' , 1)/*Lee los contenidos del XML 
+	y para eso necesita un identificador,el PATH del nodo y el 1 que sirve para retornar solo atributos*/
+	WITH(/*Dentro del WITH se pone el nombre y el tipo de los atributos a retornar*/
+	    Nombre VARCHAR(64)
+		,[Password] VARCHAR(64)
+	    )AS A
+	        
+	EXEC sp_xml_removedocument @hdoc/*Remueve el documento XML de la memoria*/
+END
