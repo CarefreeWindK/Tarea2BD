@@ -1,0 +1,29 @@
+CREATE TABLE dbo.Usuario
+(
+Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
+, UserName VARCHAR(16) NOT NULL
+, pin VARCHAR (16) NOT NULL
+ ); 
+ CREATE TABLE dbo.EventLog (
+ Id int IDENTITY(1,1) NOT NULL PRIMARY KEY
+ , LogDescription VARCHAR(2048) NOT NULL
+ , PostIdUser INT NOT NULL
+ , PostIP VARCHAR(64) NOT NULL
+ , PostTime DATETIME NOT NULL
+); 
+CREATE TABLE dbo.ClaseArticulo
+(
+Id INT IDENTITY (1, 1) PRIMARY KEY
+, Nombre VARCHAR(64)
+);
+DROP TABLE dbo.Articulo
+CREATE TABLE dbo.Articulo
+(
+Id INT IDENTITY (1, 1) PRIMARY KEY
+, IdClaseArticulo INT
+, Nombre VARCHAR(128) NOT NULL
+, Precio MONEY NOT NULL
+ );
+ALTER TABLE [dbo].[Articulo] WITH CHECK ADD CONSTRAINT
+[FK_Articulo_ClaseArticulo] FOREIGN KEY([IdClaseArticulo])
+REFERENCES [dbo].[ClaseArticulo] ([id])
