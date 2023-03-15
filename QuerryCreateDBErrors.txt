@@ -1,0 +1,12 @@
+CREATE TABLE dbo.DBErrors(
+	ErrorId INT IDENTITY(1,1) NOT NULL
+	, UserName VARCHAR(128) NULL
+	, ErrorNumber INT NULL
+	, ErrorState INT NULL
+	, ErrorSeverity INT NULL
+	, ErrorLine INT NULL
+	, ErrorProcedure VARCHAR(MAX) NULL
+	, ErrorMessage VARCHAR(MAX) NULL
+	, ErrorDateTime DATETIME NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY] 
+GO
