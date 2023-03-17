@@ -1,4 +1,11 @@
-CREATE PROCEDURE [dbo].[CargarXML]
+USE [bd1]
+GO
+/****** Object:  StoredProcedure [dbo].[CargarXML]    Script Date: 17/03/2023 1:10:15 pm ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[CargarXML]
     @inPathXML NVARCHAR(512) -- Ruta del archivo XML
 AS 
 BEGIN
@@ -6,7 +13,7 @@ BEGIN
 	
 	 -- Para cargar el archivo con una variable, CHAR(39) son comillas simples
 	DECLARE @Comando NVARCHAR(512) -- comando que va a ejecutar el sql dinamico
-	='SELECT @Datos = D FROM OPENROWSET (BULK '  + CHAR(32) + @inPathXML + CHAR(32) + ', SINGLE_BLOB) AS Datos(D)' 
+	='SELECT @Datos = D FROM OPENROWSET (BULK ''' + @inPathXML + ''', SINGLE_BLOB) AS Datos(D)'; 
 	
 	DECLARE @Parametros NVARCHAR(512)
 
@@ -23,10 +30,13 @@ BEGIN
 	
 	INSERT INTO dbo.ClaseArticulo (Nombre)
 	SELECT A.Nombre
-	FROM OPENXML (@hdoc, '/root/ClasesdeArticulos', 1)
+	FROM OPENXML (@hdoc, '/root/ClasesdeArticulos/ClasesdeArticulo', 1)
 	WITH (
 	    Nombre VARCHAR(32)
 	) AS A
+
+
+
 
 	INSERT INTO dbo.Articulo 
 					([Nombre]
@@ -39,7 +49,7 @@ BEGIN
            ELSE 0 -- Valor por defecto en caso de que no se encuentre una coincidencia
        END AS IdClaseArticulo
 	,A.precio
-	FROM OPENXML (@hdoc, '/root/Articulos' , 1)/*Lee los contenidos del XML y 
+	FROM OPENXML (@hdoc, '/root/Articulos/Articulo' , 1)/*Lee los contenidos del XML y 
 	para eso necesita un identificador,el PATH del nodo y el 1 que sirve para retornar solo atributos*/
 	WITH(/*Dentro del WITH se pone el nombre y el tipo de los atributos a retornar*/
 		Nombre VARCHAR(64),
@@ -47,12 +57,16 @@ BEGIN
 		precio money
 	    )AS A
 
+
+
+
+
 	INSERT INTO [dbo].[Usuario]
 	           ([pin]
 	           ,[UserName])/*Inserta en la tabla Departamentos*/
 	SELECT A.Nombre
 		  ,A.[Password]
-	FROM OPENXML (@hdoc, '/root/Usuarios' , 1)/*Lee los contenidos del XML 
+	FROM OPENXML (@hdoc, '/root/Usuarios/Usuario' , 1)/*Lee los contenidos del XML 
 	y para eso necesita un identificador,el PATH del nodo y el 1 que sirve para retornar solo atributos*/
 	WITH(/*Dentro del WITH se pone el nombre y el tipo de los atributos a retornar*/
 	    Nombre VARCHAR(64)
