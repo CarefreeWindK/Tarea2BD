@@ -1,0 +1,86 @@
+USE [bd1]
+GO
+/** Object:  StoredProcedure [dbo].[IdClaseArticuloToNombreClaseArticulo]    Script Date: 22/03/2023 4:07:17 pm **/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[IdClaseArticuloToNombreClaseArticulo]
+    @inIdClaseArticulo INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT TOP 1
+    A.Nombre
+
+    FROM dbo.ClaseArticulo A
+    WHERE A.Nombre = (SELECT S.Nombre FROM dbo.ClaseArticulo S WHERE S.Id = @inIdClaseArticulo)
+    ORDER BY A.Nombre ASC;
+
+    SET NOCOUNT OFF;
+END
+USE [bd1]
+GO
+/** Object:  StoredProcedure [dbo].[NombreClaseArticuloToIdClaseArticulo]    Script Date: 22/03/2023 4:07:36 pm **/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[NombreClaseArticuloToIdClaseArticulo]
+    @inNombreClaseArticulo VARCHAR(32)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT TOP 1
+    A.IdClaseArticulo
+
+    FROM dbo.Articulo A
+    WHERE A.IdClaseArticulo = (SELECT S.Id FROM dbo.ClaseArticulo S WHERE S.Nombre = @InNombreClaseArticulo)
+    ORDER BY A.IdClaseArticulo ASC;
+
+    SET NOCOUNT OFF;
+END
+USE [bd1]
+GO
+/** Object:  StoredProcedure [dbo].[busquedaFiltradaPorNombre]    Script Date: 22/03/2023 4:08:02 pm **/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[busquedaFiltradaPorNombre]
+    @inPatronDeBusqueda VARCHAR(32)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT A.nombre
+    FROM dbo.Articulo A
+    WHERE A.nombre LIKE '%' + @inPatronDeBusqueda + '%'
+    ORDER BY A.nombre ASC;
+
+    SET NOCOUNT OFF;
+END
+USE [bd1]
+GO
+/** Object:  StoredProcedure [dbo].[busquedaFiltradaPorClase]    Script Date: 22/03/2023 4:08:14 pm **/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[busquedaFiltradaPorClase]
+    @inIdClaseArticulo INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+    A.IdClaseArticulo
+
+    FROM dbo.Articulo A
+    WHERE A.IdClaseArticulo = @inIdClaseArticulo
+    ORDER BY A.IdClaseArticulo ASC;
+
+    SET NOCOUNT OFF;
+END
