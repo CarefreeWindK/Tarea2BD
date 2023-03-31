@@ -1,0 +1,100 @@
+USE [bd1]
+GO
+/****** Object:  StoredProcedure [dbo].[validarUsuario]    Script Date: 30/03/2023 8:40:44 pm ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[validarUsuario]
+     @inNombreUsuario VARCHAR(32)
+    , @inPin VARCHAR(32)
+    , @inIpUsuario VARCHAR(32)
+    , @outUsuarioEncontrado INT OUTPUT
+AS
+BEGIN
+	DECLARE @IdUsuario INT=7777777;
+    DECLARE @datos_json VARCHAR(2048)='{"TipoAccion":"Login exitoso","Description":"Se ha iniciado sesion correctamente"}'
+    DECLARE @FechaHoraActual DATETIME
+    SET @FechaHoraActual = GETDATE() --Obtiene la fecha y hora actuales
+    SET NOCOUNT ON;
+
+	
+	SELECT @IdUsuario = A.Id
+	FROM dbo.Usuario A
+	WHERE A.UserName = @inNombreUsuario;
+
+
+    IF COALESCE(@inNombreUsuario, '') = '' -- Valida que el valor de @nombre no sea nulo ni cadena vacía
+    BEGIN
+        SET @outUsuarioEncontrado=5003 --5003 nombre usuario vacío o nulo
+        SET @datos_json = JSON_MODIFY(@datos_json, '$.TipoAccion', 'Login fallido')
+        SET @datos_json = JSON_MODIFY(@datos_json, '$.Description', 'nombre usuario vacío o nulo')
+        INSERT dbo.EventLog (
+            LogDescription
+            , PostIdUser
+            , PostIP
+            , PostTime     
+        )
+        VALUES (
+            @datos_json
+            , @IdUsuario
+            , @inIpUsuario
+            , @FechaHoraActual
+        );
+        RETURN
+    END
+    ELSE IF COALESCE(@inPin, '') = '' -- Valida que el valor de @inPin no sea nulo ni cadena vacía
+    BEGIN
+        SET @outUsuarioEncontrado=5004 --5004 contraseña de usuario vacía o nula
+        SET @datos_json = JSON_MODIFY(@datos_json, '$.TipoAccion', 'Login fallido')
+        SET @datos_json = JSON_MODIFY(@datos_json, '$.Description', 'contraseña de usuario vacía o nula')
+        INSERT dbo.EventLog (
+            LogDescription
+            , PostIdUser
+            , PostIP
+            , PostTime     
+        )
+        VALUES (
+            @datos_json
+            , @IdUsuario
+            , @inIpUsuario
+            , @FechaHoraActual
+        );
+        RETURN
+    END
+
+    IF NOT EXISTS (SELECT A.UserName, A.pin FROM dbo.Usuario A WHERE A.UserName=@inNombreUsuario AND A.pin=@inPin)
+    BEGIN
+        SET @outUsuarioEncontrado = 5005 -- Nombre de usuario o contraseña no existen en la tabla de Usuario
+        SET @datos_json = JSON_MODIFY(@datos_json, '$.TipoAccion', 'Login fallido')
+        SET @datos_json = JSON_MODIFY(@datos_json, '$.Description', 'Nombre de usuario o contraseña no existen en la tabla de Usuario')
+        INSERT dbo.EventLog (
+            LogDescription
+            , PostIdUser
+            , PostIP
+            , PostTime     
+        )
+        VALUES (
+            @datos_json
+            , @IdUsuario
+            , @inIpUsuario
+            , @FechaHoraActual
+        );
+        RETURN
+    END
+
+    INSERT dbo.EventLog (
+        LogDescription
+        , PostIdUser
+        , PostIP
+    , PostTime     
+    )
+   VALUES (
+    @datos_json
+    , @IdUsuario
+    , @inIpUsuario
+    , @FechaHoraActual
+    );
+    SET NOCOUNT OFF;
+  SET @outUsuarioEncontrado = 0
+END
