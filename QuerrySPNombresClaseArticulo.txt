@@ -1,0 +1,13 @@
+
+CREATE PROCEDURE retonarNombreClaseArticulo
+AS
+BEGIN
+    SET NOCOUNT ON; 
+        SELECT
+          
+         A.Nombre
+        
+        FROM dbo.ClaseArticulo A
+        ORDER BY A.Nombre ASC;
+    SET NOCOUNT OFF;
+END;

@@ -1,0 +1,136 @@
+USE [bd1]
+GO
+/****** Object:  StoredProcedure [dbo].[InsertarArticulo]    Script Date: 03/04/2023 2:30:20 pm ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[InsertarArticulo] 
+
+	@inIdClaseArticulo VARCHAR(32)	-- Nueva clase de articulo
+	, @inNombre VARCHAR(128)	-- Nuevo Nombre de articulo
+	, @inPrecio MONEY			-- Nuevo Precio
+	, @inUserName VARCHAR(32)				-- Usuario que esta insertando desde UI
+	, @inIP VARCHAR(64)			-- Ip desde donde corre el UI que inserta
+	, @outResultCode INT OUTPUT	-- Código de resultado del SP
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- Interfering with SELECT statements.
+	SET NOCOUNT ON;
+	-- Se válidan los datos de entrada, pues no estamos seguros que se validaron en capa lógica.
+	-- Validar que articulo exista.
+
+	BEGIN TRY
+		-- Inicia código en el cual se captura errores
+
+		DECLARE @LogDescription VARCHAR(2048)='Insertando en tabla Articulo: {Nombre="'
+
+		DECLARE @FechaHoraActual DATETIME
+
+		DECLARE @IdClaseArticulo INT
+		
+		DECLARE @IdUsuario INT= 77777
+
+		SET @FechaHoraActual = GETDATE() --Obtiene la fecha y hora actuales
+
+		SET @outResultCode=0;  -- Por default código error 0 es que no hubo error
+
+		-- Válida que el nombre insertado no exista
+		IF EXISTS (SELECT A.Nombre FROM dbo.Articulo A WHERE A.Nombre=@inNombre)
+		BEGIN
+			-- Procesar error
+			SET @outResultCode=50002;		--Nombre del articulo existe
+			RETURN;
+		END;
+		--Válida que el precio sea formato money
+		IF @inPrecio IS NOT NULL AND (ISNUMERIC(@inPrecio) = 0 OR CAST(@inPrecio AS MONEY) < 0)
+		BEGIN
+    			SET @outResultCode = 50006; -- Código de error para indicar que el precio es inválido
+    			RETURN;
+		END;
+
+		
+		--Asigna a la variable @IdClaseArticulo el valor númerico de la clase del articulo
+		SELECT @IdClaseArticulo = A.Id 
+		FROM dbo.ClaseArticulo A 
+		WHERE A.Nombre = @inIdClaseArticulo
+		
+		--Asigna a la variable @IdUsuario el valor númerico del usuario que inserta el articulo
+		SELECT @IdUsuario = A.Id
+		FROM dbo.Usuario A
+		WHERE A.UserName = @inUserName;	
+		-- Se preprocesa lo que luego se actualiza, si es necesario se guarda informacion en variables o en tablas variable
+
+		Set @LogDescription = 
+					@LogDescription+@inNombre
+					+'", Precio="'
+					+CONVERT(
+					VARCHAR
+					, @inPrecio
+					)
+					+'IdClaseArticulo="'
+					+CONVERT(
+					VARCHAR
+					, @inIdClaseArticulo
+					)+
+					'}';
+
+
+		-- Siempre que vamos a actualizar tablas (y son 2 o mas tablas se inicia transaccion de BD)_
+		BEGIN TRANSACTION tInsertArticulo 
+			
+			INSERT dbo.Articulo (
+				IdClaseArticulo
+				, Nombre
+				, Precio
+				)
+
+			VALUES (
+				@IdClaseArticulo
+				, @inNombre
+				, @inPrecio
+				);
+
+			INSERT dbo.EventLog (
+				LogDescription
+				, PostIdUser
+				, PostIP
+				, PostTime	
+				)
+			VALUES (
+				@LogDescription
+				, @IdUsuario
+				, @inIP
+				, @FechaHoraActual
+				);
+
+			-- Salvamos en EventLog, el evento de actualizar el articulo
+		COMMIT TRANSACTION tInsertArticulo
+
+	END TRY
+	BEGIN CATCH
+
+		IF @@TRANCOUNT>0  -- Error sucedio dentro de la transacción
+		BEGIN
+			ROLLBACK TRANSACTION tUpdateArticulo; -- Se deshacen los cambios realizados
+		END;
+		INSERT INTO dbo.DBErrors
+		
+		VALUES (
+			SUSER_SNAME(),
+			ERROR_NUMBER(),
+			ERROR_STATE(),
+			ERROR_SEVERITY(),
+			ERROR_LINE(),
+			ERROR_PROCEDURE(),
+			ERROR_MESSAGE(),
+			GETDATE()
+		);
+
+		Set @outResultCode=50005;
+	
+	END CATCH
+
+	SET NOCOUNT OFF;
+END;
