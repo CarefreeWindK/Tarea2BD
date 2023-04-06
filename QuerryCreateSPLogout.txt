@@ -1,0 +1,76 @@
+CREATE PROCEDURE logout
+	@inNombreUsuario VARCHAR(32)
+	, @inIpUsuario VARCHAR(32)
+	, @outResultCode INT OUTPUT	-- Código de resultado del SP
+AS
+BEGIN
+	
+	DECLARE @datos_json VARCHAR(2048)='{"TipoAccion":"Logout","Description":""}'
+	DECLARE @FechaHoraActual DATETIME
+	DECLARE @IdUsuario INT = 77777
+	SET @FechaHoraActual = GETDATE() --Obtiene la fecha y hora actuales
+	SET NOCOUNT ON;
+	
+	IF @inNombreUsuario = '' OR @inNombreUsuario IS NULL OR @inIpUsuario = '' OR @inIpUsuario IS NULL
+	BEGIN
+		SET @outResultCode = 5007 --5007 nombre usuario o la ip del usuario son vacíos o nulos
+		SET @datos_json = JSON_MODIFY(@datos_json, '$.TipoAccion', 'Logout fallido')
+		SET @datos_json = JSON_MODIFY(@datos_json, '$.Description', 'nombre usuario vacío o nulo')
+		
+		INSERT dbo.EventLog (
+			LogDescription
+			, PostIdUser
+			, PostIP
+			, PostTime     
+		)
+		VALUES (
+			@datos_json
+			, @IdUsuario
+			, @inIpUsuario
+			, @FechaHoraActual
+		);
+		
+		RETURN;
+	END
+
+	SELECT @IdUsuario = A.Id
+	FROM dbo.Usuario A
+	WHERE A.UserName = @inNombreUsuario;
+	
+	IF @IdUsuario = 0
+	BEGIN
+		SET @outResultCode = 5006 --5006 no fue encontrado el usuario en la tabla de usuarios
+		SET @datos_json = JSON_MODIFY(@datos_json, '$.TipoAccion', 'Logout fallido')
+		SET @datos_json = JSON_MODIFY(@datos_json, '$.Description', 'nombre usuario no fue encontrado')
+		
+		INSERT dbo.EventLog (
+			LogDescription
+			, PostIdUser
+			, PostIP
+			, PostTime     
+		)
+		VALUES (
+			@datos_json
+			, @IdUsuario
+			, @inIpUsuario
+			, @FechaHoraActual
+		);
+		
+		RETURN;
+	END
+
+	INSERT dbo.EventLog (
+		LogDescription
+		, PostIdUser
+		, PostIP
+		, PostTime     
+	)
+	VALUES (
+		@datos_json
+		, @IdUsuario
+		, @inIpUsuario
+		, @FechaHoraActual
+	);
+
+	SET NOCOUNT OFF; 
+END
